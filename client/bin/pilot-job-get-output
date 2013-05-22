@@ -1,0 +1,141 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use POSIX;
+use JSON;
+use PilotCheckParams;
+
+my $fdlog;
+
+### Get parameters that are needed for work
+my $results = PilotCheckParams::check_params();
+open($fdlog, ">>", $results->{pilite_log_file});
+
+
+### Check if a job ID is passed
+my $rnd_job_name = $ARGV[0];
+if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: ERROR:\n";
+    print $fdlog "  Usage: pilot-job-get-output ID ...\n\n";
+    print $fdlog "  Download output files, STDOUT and STDERR of the finished job by ID.\n";
+    close($fdlog);
+    print "No output\n";
+    exit 1;
+}
+
+### Return if needed params are not set
+if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: $rnd_job_name: ERROR: Global params are not set\n";
+    close($fdlog);
+    print "No output\n";
+    exit 1;
+}
+
+### Set some more params
+my $executable_status = $results->{local_script_dir}.'/pilot-job-status';
+my $remote_executable_check = $results->{remote_script_dir}.'/check_file_exists.pl';
+
+### Get the job execution status
+my $job_status=qx(${executable_status} $rnd_job_name);
+chomp($job_status);
+if ($job_status ne 'Finished') {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: $rnd_job_name: WARNING: Job is not in the FINISHED state.\n";
+    print $fdlog "  The current state is: $job_status\n";
+    close($fdlog);
+    print "No output\n";
+    exit 1;
+}
+
+### Get the corresponding job definition file
+my $short_job_name = PilotCheckParams::get_job_name_by_id($results->{pilite_full_dir}, $rnd_job_name, $results->{pilite_log_file});
+if ((not defined $short_job_name) or (not length $short_job_name)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: $rnd_job_name: ERROR: Local job is not found\n";
+    close($fdlog);
+    print "No output\n";
+    exit 1;
+}
+
+######################################################################################################
+
+    my $local_rnd_full_job_dir = $results->{pilite_full_dir}.'/.'.$rnd_job_name;
+    my $job_name = $local_rnd_full_job_dir.'/'.$short_job_name;
+    my $server_rnd_job_dir = $results->{pilite_dir}.'/.'.$rnd_job_name;
+
+    ### Set default STDERR and STDOUT names
+    my $stderr = 'stderr.log';
+    my $stdout = 'stdout.log';
+
+    ### Read the job definition
+    my $fd;
+    if (not(open($fd, $job_name))) {
+        open($fdlog, ">>", $results->{pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: $rnd_job_name: ERROR: Can not open job definition file: ".$job_name."\n"; 
+        close($fdlog);
+        print "No output\n";
+        exit 1;
+    }
+    my $job_text = "";
+    while (my $line=<$fd>) {
+        $job_text .= $line;
+    }
+    close($fd);
+    
+    ### Parse the job definition
+    my $job_def = decode_json $job_text;
+   
+    ### Get the array of tasks 
+    my @tasks = ();
+    if ((exists $job_def->{tasks}) and (defined $job_def->{tasks}) and (ref $job_def->{tasks} eq 'ARRAY')) {
+        @tasks = @{$job_def->{tasks}};
+    }
+    if (length(@tasks) == 0) {
+        open($fdlog, ">>", $results->{pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-get-output: $rnd_job_name: ERROR: No tasks defined!\n";
+        close($fdlog);
+        print "No output\n";
+        exit 1;
+    } 
+    ### Iterate through the tasks and select the first one
+    foreach my $task (@tasks) {
+        my $task_definition;
+        if ((exists $task->{definition}) and (defined $task->{definition}) and (ref $task->{definition} eq 'HASH')) {
+            $task_definition = $task->{definition};
+            my $output_files;
+            if ((exists $task_definition->{output_files}) and (defined $task_definition->{output_files}) and (ref $task_definition->{output_files} eq 'HASH')) {
+                $output_files = $task_definition->{output_files};
+                ### Iterate through the output files
+                foreach my $output_file_name (keys %{$output_files}) {
+                    ### Download the output file from the server
+                    my $output_file = $output_files->{$output_file_name};
+                    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_rnd_job_dir.'/'.$output_file.' '.$local_rnd_full_job_dir.'/'.$output_file.' 2>&1 > /dev/null');
+                    print "OUT file: ".$local_rnd_full_job_dir.'/'.$output_file."\n";
+                } # foreach output file
+            }
+            ### Download stdout file
+            if ((exists $task_definition->{stdout}) and (defined $task_definition->{stdout}) and (length $task_definition->{stdout} > 0)) {
+                $stdout = $task_definition->{stdout};
+                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_rnd_job_dir.'/'.$stdout.' '.$local_rnd_full_job_dir.'/'.$stdout.' 2>&1 > /dev/null');
+                print "STDOUT file: ".$local_rnd_full_job_dir.'/'.$stdout."\n";
+            }
+            ### Download stderr file
+            if ((exists $task_definition->{stderr}) and (defined $task_definition->{stderr}) and (length $task_definition->{stderr} > 0)) {
+                $stderr = $task_definition->{stderr};
+                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_rnd_job_dir.'/'.$stderr.' '.$local_rnd_full_job_dir.'/'.$stderr.' 2>&1 > /dev/null');
+                print "STDERR file: ".$local_rnd_full_job_dir.'/'.$stderr."\n";
+            }
+        } else {
+            open($fdlog, ">>", $results->{pilite_log_file});
+            print "ERROR: Invalid definition for task: ".$task->{id}.". No definition!\n";
+            close($fdlog);
+            print "No output\n";
+            exit 1;
+        }
+        last;
+    }
+
+    exit 0;

@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use POSIX;
+use PilotCheckParams;
+
+my $fdlog;
+
+### Get parameters that are needed for work
+my $results = PilotCheckParams::check_params();
+
+### Return if needed params are not set
+if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-list: ERROR: Global params are not set\n";
+    close($fdlog);
+    exit 1;
+}
+
+### Get the jobs list
+    my $jobs_list = qx(cd $results->{pilite_full_dir} && ls -d \.*);
+    my @all_jobs = split /\s/, $jobs_list;
+    my $pilite_jobs = '';
+    foreach my $job (@all_jobs) {
+        if (($job ne '.') and ($job ne '..')) {
+            $job =~ s{\A \.(.+)\z}{$1}xms;
+            $pilite_jobs .= $job."\n";
+        }
+    }
+    print $pilite_jobs;
+
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-list:\n$pilite_jobs"; 
+    close($fdlog);

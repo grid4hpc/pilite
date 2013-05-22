@@ -1,0 +1,47 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use POSIX;
+use JSON;
+use PilotCheckParams;
+
+my $fdlog;
+
+### Get parameters that are needed for work
+my $results = PilotCheckParams::check_params();
+
+### Check if a job definition is defined
+my $rnd_job_name = $ARGV[0];
+if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: ERROR:\n";
+    print $fdlog "  Usage: pilot-job-cleanup ID ...\n\n";
+    print $fdlog "  Cleanup all data for the job by ID.\n";
+    close($fdlog);
+    exit 1;
+}
+
+### Return if needed params are not set
+if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
+    open($fdlog, ">>", $results->{pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: $rnd_job_name: ERROR: Global params are not set\n";
+    close($fdlog);
+    exit 1;
+}
+
+    my $remote_executable_cleanup = $results->{remote_script_dir}.'/cleanup_dir.pl';
+    my $local_rnd_full_job_dir = $results->{pilite_full_dir}.'/.'.$rnd_job_name;
+    if ((not defined $local_rnd_full_job_dir) or (not length $local_rnd_full_job_dir) or ($local_rnd_full_job_dir =~ /\*/)) {
+        open($fdlog, ">>", $results->{pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: $rnd_job_name: ERROR: Temporary directory is not set or has incorrect name!\n";
+        close($fdlog);
+        exit 1;
+    }
+
+    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$remote_executable_cleanup.' '.$rnd_job_name);
+    if (-d $local_rnd_full_job_dir) {
+        system('rm -rf '.$local_rnd_full_job_dir);
+    }
+
+    exit 0;

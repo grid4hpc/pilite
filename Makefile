@@ -1,0 +1,168 @@
+#
+# piLite Makefile
+#
+
+INSTALLDIR    = /root/test
+HOMEDIR       = /root
+
+################################
+INSTALL       = /usr/bin/install
+
+SERVERDIR     =server
+CLIENTDIR     =client
+BINDIR        =bin
+LIBDIR        =lib
+EXAMPLESDIR   =examples
+PILITEWORKDIR = .pilite
+PILITECONFDIR = conf
+
+PILITE_CLIENT_BIN = \
+	pilot-job-cleanup \
+        pilot-job-get-output \
+        pilot-job-list \
+        pilot-job-status \
+        pilot-job-submit \
+
+PILITE_CLIENT_LIB = \
+	PilotCheckParams.pm \
+
+PILITE_CLIENT_CONF = \
+	pilite.conf \
+
+PILITE_SERVER_BIN = \
+	check_file_exists.pl \
+        cleanup_dir.pl \
+        job_execute.pl \
+        job_execute_wrapper.pl \
+        job_prepare_dir.pl \
+        job_status.pl \
+
+all: install-client
+
+install-client-bin:
+	@echo "piLite client: installing binary files to directory: $(INSTALLDIR)/"
+	@( for file in $(PILITE_CLIENT_BIN) ; do \
+		$(INSTALL) -m 0755 $(CLIENTDIR)/$(BINDIR)/$$file $(INSTALLDIR)/ ;\
+		echo "   $$file" ;\
+	done )
+	@echo "Done"
+
+install-client-lib:
+	@echo "piLite client: installing lib files to directory: $(INSTALLDIR)/"
+	@( for file in $(PILITE_CLIENT_LIB) ; do \
+		$(INSTALL) -m 0644 $(CLIENTDIR)/$(LIBDIR)/$$file $(INSTALLDIR)/ ;\
+		echo "   $$file" ;\
+	done )
+	@echo "Done"
+
+install-client-conf:
+	@echo "piLite client: preparing working directory: $(HOMEDIR)/$(PILITEWORKDIR)"
+	@( if [ ! -d $(HOMEDIR)/$(PILITEWORKDIR) ] ; then \
+		mkdir $(HOMEDIR)/$(PILITEWORKDIR) ;\
+		echo "   mkdir $(HOMEDIR)/$(PILITEWORKDIR)" ;\
+	fi )
+	@echo "Done"
+	@echo "piLite client: preparing conf directory: $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)"
+	@( if [ ! -d $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR) ] ; then \
+		mkdir $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR) ;\
+		echo "   mkdir $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)" ;\
+	fi )
+	@echo "Done"
+	@echo "piLite client: installing conf files to directory: $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)"
+	@( for file in $(PILITE_CLIENT_CONF) ; do \
+		$(INSTALL) -m 0644 $(CLIENTDIR)/$(EXAMPLESDIR)/$$file $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)/ ;\
+		echo "   $$file" ;\
+	done )
+	@echo "Done"
+
+install-client: install-client-bin install-client-lib install-client-conf
+
+install: install-client
+
+clean-client-bin:
+	@echo "piLite client: removing bin files:"
+	@( for file in $(PILITE_CLIENT_BIN) ; do \
+		if [ -e $(INSTALLDIR)/$$file ] ; then \
+			rm -f $(INSTALLDIR)/$$file ;\
+			echo "   rm $(INSTALLDIR)/$$file" ;\
+		fi ;\
+	done )
+	@echo "Done"
+
+clean-client-lib:
+	@echo "piLite client: removing lib files:"
+	@( for file in $(PILITE_CLIENT_LIB) ; do \
+		if [ -e $(INSTALLDIR)/$$file ] ; then \
+			rm -f $(INSTALLDIR)/$$file ;\
+			echo "   rm $(INSTALLDIR)/$$file" ;\
+		fi ;\
+	done )
+	@echo "Done"
+
+clean-client-conf:
+	@echo "piLite client: removing conf files:"
+	@( for file in $(PILITE_CLIENT_CONF) ; do \
+		if [ -e $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)/$$file ] ; then \
+			rm -f $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)/$$file ;\
+			echo "   rm $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)/$$file" ;\
+		fi ;\
+	done )
+	@echo "Done"
+
+clean-client-workdir:
+	@echo "piLite client: removing working directory: $(HOMEDIR)/$(PILITEWORKDIR)"
+	@( if [ -d $(HOMEDIR)/$(PILITEWORKDIR) ] ; then \
+		rm -rf $(HOMEDIR)/$(PILITEWORKDIR) ;\
+		echo "   rm -r $(HOMEDIR)/$(PILITEWORKDIR)" ;\
+	fi )
+	@echo "Done"
+
+clean-client-only-prog: clean-client-bin clean-client-lib
+
+clean-client-all: clean-client-bin clean-client-lib clean-client-conf clean-client-workdir
+
+clean-client: clean-client-only-prog
+
+install-server-bin:
+	@echo "piLite server: installing binary files to directory: $(INSTALLDIR)"
+	@( for file in $(PILITE_SERVER_BIN) ; do \
+		$(INSTALL) -m 0755 $(SERVERDIR)/$(BINDIR)/$$file $(INSTALLDIR)/ ;\
+		echo "   $$file" ;\
+	done )
+	@echo "Done"
+
+install-server-workdir:
+	@echo "piLite server: preparing working directory: $(HOMEDIR)/$(PILITEWORKDIR)"
+	@( if [ ! -d $(HOMEDIR)/$(PILITEWORKDIR) ] ; then \
+		mkdir $(HOMEDIR)/$(PILITEWORKDIR) ;\
+		echo "   mkdir $(HOMEDIR)/$(PILITEWORKDIR)" ;\
+	fi )
+	@echo "Done"
+
+install-server: install-server-bin install-server-workdir
+
+clean-server-workdir:
+	@echo "piLite server: removing working directory: $(HOMEDIR)/$(PILITEWORKDIR)"
+	@( if [ -d $(HOMEDIR)/$(PILITEWORKDIR) ] ; then \
+		rm -rf $(HOMEDIR)/$(PILITEWORKDIR) ;\
+		echo "   rm -r $(HOMEDIR)/$(PILITEWORKDIR)" ;\
+	fi )
+	@echo "Done"
+
+clean-server-only-prog:
+	@echo "piLite server: removing bin files:"
+	@( for file in $(PILITE_SERVER_BIN) ; do \
+		if [ -e $(INSTALLDIR)/$$file ] ; then \
+			rm -f $(INSTALLDIR)/$$file ;\
+			echo "   rm $(INSTALLDIR)/$$file" ;\
+		fi ;\
+	done )
+	@echo "Done"
+
+clean-server-all: clean-server-only-prog clean-server-workdir
+
+clean-server: clean-server-only-prog
+
+
+
+

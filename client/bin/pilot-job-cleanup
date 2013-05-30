@@ -7,15 +7,16 @@ use JSON;
 use PilotCheckParams;
 
 my $fdlog;
+my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
 
 ### Check if a job definition is defined
-my $rnd_job_name = $ARGV[0];
-if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
-    open($fdlog, ">>", $results->{pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: ERROR:\n";
+my $job_id = $ARGV[0];
+if ((not defined $job_id) or (not length $job_id)) {
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-cleanup: ERROR:\n";
     print $fdlog "  Usage: pilot-job-cleanup ID ...\n\n";
     print $fdlog "  Cleanup all data for the job by ID.\n";
     close($fdlog);
@@ -24,24 +25,32 @@ if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
-    open($fdlog, ">>", $results->{pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: $rnd_job_name: ERROR: Global params are not set\n";
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-cleanup $job_id: ERROR: Global params are not set\n";
     close($fdlog);
     exit 1;
 }
 
-    my $remote_executable_cleanup = $results->{remote_script_dir}.'/cleanup_dir.pl';
-    my $local_rnd_full_job_dir = $results->{pilite_full_dir}.'/.'.$rnd_job_name;
-    if ((not defined $local_rnd_full_job_dir) or (not length $local_rnd_full_job_dir) or ($local_rnd_full_job_dir =~ /\*/)) {
-        open($fdlog, ">>", $results->{pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-cleanup: $rnd_job_name: ERROR: Temporary directory is not set or has incorrect name!\n";
+    my $remote_executable_cleanup = $results->{remote_script_dir}.'/job_cleanup.pl';
+    my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+    my $local_full_job_dir = $local_pilite_user_dir.'/'.$job_id;
+    if ((not defined $local_full_job_dir) or (not length $local_full_job_dir) or ($local_full_job_dir =~ /\*/)) {
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-cleanup $job_id: ERROR: Temporary directory is not set or has incorrect name!\n";
         close($fdlog);
         exit 1;
     }
 
-    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$remote_executable_cleanup.' '.$rnd_job_name);
-    if (-d $local_rnd_full_job_dir) {
-        system('rm -rf '.$local_rnd_full_job_dir);
+    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$remote_executable_cleanup.' '.$job_id.' '.$pilite_user_name);
+    if (-d $local_full_job_dir) {
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-cleanup $job_id removing $local_full_job_dir\n";
+        close($fdlog);
+        system('rm -rf '.$local_full_job_dir);
+    } else {
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-cleanup $job_id no such a directory $local_full_job_dir\n";
+        close($fdlog);
     }
 
     exit 0;

@@ -14,27 +14,29 @@ my $prepare_dir_remote_script_name = 'job_prepare_dir.pl';
 
 my $fdlog;
 
+my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
+
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
 
 ### Check if a job definition file is passed
 my $job_name = $ARGV[0];
-my $job_result = PilotCheckParams::check_job_file($job_name, $results->{pilite_log_file});
+my $job_result = PilotCheckParams::check_job_file($job_name, $results->{full_pilite_log_file});
 if (not $job_result) {
     exit 1;
 }
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
-    open($fdlog, ">>", $results->{pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Global params are not set\n";
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Global params are not set\n";
     close($fdlog);
     exit 1;
 }
 
 ### Create the working directory if needed
-if ((not(-e ($results->{pilite_full_dir}))) or (not(-d _))) {
-    mkdir $results->{pilite_full_dir};
+if ((not(-e ($results->{full_pilite_dir}))) or (not(-d _))) {
+    mkdir $results->{full_pilite_dir};
 }
 
 ### Set some more params
@@ -47,8 +49,8 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
     ### Read the job definition
     my $fd;
     if (not(open($fd, $job_name))) {
-        open($fdlog, ">>", $results->{pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Can not open job definition file: ".$job_name."\n";  
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Can not open job definition file: ".$job_name."\n";  
         close($fdlog);
         exit 1;
     }
@@ -59,19 +61,26 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
     close($fd);
     
     ### Generate job ID
-    my $rnd_job_name = join("", @chars[ map{ rand @chars }(1 .. 8) ]);
+    my $job_id = join("", @chars[ map{ rand @chars }(1 .. 8) ]);
+
+    my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+    if (not (-e $local_pilite_user_dir)) {
+        mkdir $local_pilite_user_dir;
+    }
     
     ### Prepare local job dir
-    my $local_rnd_full_job_dir = $results->{pilite_full_dir}.'/.'.$rnd_job_name;
-    mkdir $local_rnd_full_job_dir;
+    my $local_full_job_dir = $local_pilite_user_dir.'/'.$job_id;
+    if (not (-e $local_full_job_dir)) {
+        mkdir $local_full_job_dir;
+    }
    
     ### Later we will use only job ID to access the job
     ### Let's save the job file name in a special file
     my $fdw;
-    my $local_job_description = $local_rnd_full_job_dir.'/'.$rnd_job_name;
+    my $local_job_description = $local_full_job_dir.'/'.$job_id;
     if (not(open($fdw, '>', $local_job_description))) {
-        open($fdlog, ">>", $results->{pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Failed to save job definition file name to the special file: ".$local_job_description."\n"; 
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Failed to save job definition file name to the special file: ".$local_job_description."\n"; 
         close($fdlog);
         exit 1;
     }
@@ -79,8 +88,8 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
     close($fdw);
     
     ### Prepare server job dir
-    my $server_rnd_job_dir = $results->{pilite_dir}.'/.'.$rnd_job_name;
-    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$prepare_dir_remote_executable.' '.$results->{pilite_dir}.' '.$rnd_job_name);
+    my $server_job_dir = $results->{short_pilite_dir}.'/'.$pilite_user_name.'/'.$job_id;
+    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$prepare_dir_remote_executable.' '.$job_id.' '.$pilite_user_name);
 
     ### Parse the job definition
     my $job_def = decode_json $job_text;
@@ -91,8 +100,8 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
         @tasks = @{$job_def->{tasks}};
     }
     if (length(@tasks) == 0) {
-        open($fdlog, ">>", $results->{pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: No tasks defined!\n";
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: No tasks defined!\n";
         close($fdlog);
         exit 1;
     } 
@@ -110,24 +119,24 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
                     my $input_file = $input_files->{$input_file_name};
                     if (-e $input_file) {
                         ### Upload the input file to the server
-                        if (not(copy($input_file, $local_rnd_full_job_dir.'/'.$input_file))) {
-                            open($fdlog, ">>", $results->{pilite_log_file});
-                            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Copy of input file failed: $!";
+                        if (not(copy($input_file, $local_full_job_dir.'/'.$input_file))) {
+                            open($fdlog, ">>", $results->{full_pilite_log_file});
+                            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of input file failed: $!";
                             close($fdlog);
                             exit 1;
                         }
-                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_rnd_job_dir.'/'.$input_file.' 2>&1 > /dev/null');
+                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$input_file.' 2>&1 > /dev/null');
                     } else {
-                        open($fdlog, ">>", $results->{pilite_log_file});
-                        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Input file '".$input_file."' for task '".$task->{id}."' is not found\n";
+                        open($fdlog, ">>", $results->{full_pilite_log_file});
+                        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Input file '".$input_file."' for task '".$task->{id}."' is not found\n";
                         close($fdlog);
                         exit 1;
                     }
                 } # foreach input file
             }
         } else {
-            open($fdlog, ">>", $results->{pilite_log_file});
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Invalid definition for task: ".$task->{id}.". No definition!\n";
+            open($fdlog, ">>", $results->{full_pilite_log_file});
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Invalid definition for task: ".$task->{id}.". No definition!\n";
             close($fdlog);
             exit 1;
         }
@@ -135,20 +144,20 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
     } # foreach task
 
     ### Upload the job file to the server
-    if (not(copy($job_name, $local_rnd_full_job_dir.'/'.$short_job_name))) {
-        open($fdlog, ">>", $results->{pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: $job_name: ERROR: Copy of the job file failed: $!";
+    if (not(copy($job_name, $local_full_job_dir.'/'.$short_job_name))) {
+        open($fdlog, ">>", $results->{full_pilite_log_file});
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of the job file failed: $!";
         close($fdlog);
         exit 1;
     }
-    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$job_name.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_rnd_job_dir.'/'.$short_job_name.' 2>&1 > /dev/null');
+    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$job_name.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$short_job_name.' 2>&1 > /dev/null');
 
     ### Submit the job
-    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$main_remote_executable.' '.$server_rnd_job_dir.' '.$short_job_name);
+    system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$main_remote_executable.' '.$job_id.' '.$pilite_user_name.' '.$short_job_name);
 
-    open($fdlog, ">>", $results->{pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit $job_name $rnd_job_name\n";
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name $job_id\n";
     close($fdlog);
 
-    print "Job ID: ".$rnd_job_name."\n";
+    print STDOUT "Job ID: ".$job_id."\n";
     exit 0;

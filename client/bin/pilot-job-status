@@ -8,15 +8,16 @@ use File::Spec;
 use PilotCheckParams;
 
 my $fdlog;
+my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
-open($fdlog, ">>", $results->{pilite_log_file});
 
 ### Check if a job ID is passed
-my $rnd_job_name = $ARGV[0];
-if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-status: ERROR:\n";
+my $job_id = $ARGV[0];
+if ((not defined $job_id) or (not length $job_id)) {
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-status ERROR:\n";
     print $fdlog "  Usage: pilot-job-status ID ...\n\n";
     print $fdlog "  Get a status information for the job by ID.\n";
     close($fdlog);
@@ -26,27 +27,29 @@ if ((not defined $rnd_job_name) or (not length $rnd_job_name)) {
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-status: $rnd_job_name: ERROR: Global params are not set\n";
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-status $job_id: ERROR: Global params are not set\n";
     close($fdlog);
     print "Unknown\n";
     exit 1;
 }
-close($fdlog);
 
 ### Get the corresponding job definition file
-my $short_job_name = PilotCheckParams::get_job_name_by_id($results->{pilite_full_dir}, $rnd_job_name, $results->{pilite_log_file});
-open($fdlog, ">>", $results->{pilite_log_file});
+### This step is only needed for checking that the job seems to be correct on the client side
+my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+my $short_job_name = PilotCheckParams::get_job_name_by_id($local_pilite_user_dir, $job_id, $results->{full_pilite_log_file});
 if ((not defined $short_job_name) or (not length $short_job_name)) {
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-status: $rnd_job_name: ERROR: Local job is not found\n";
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-status $job_id: ERROR: Local job is not found\n";
     close($fdlog);
     print "Unknown\n";
     exit 1;
 }
 
 ### Get the status
-    my $job_name = $results->{pilite_dir}.'/.'.$rnd_job_name.'/'.$short_job_name;
     my $remote_executable_status = $results->{remote_script_dir}."/job_status.pl";
-    my $result = qx($results->{ssh_exec} -i $results->{path_to_key_file} $results->{remote_user_name}\@$results->{remote_host_name} ${remote_executable_status} $job_name);
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-status $rnd_job_name $result\n";
+    my $result = qx($results->{ssh_exec} -i $results->{path_to_key_file} $results->{remote_user_name}\@$results->{remote_host_name} ${remote_executable_status} $job_id $pilite_user_name);
+    open($fdlog, ">>", $results->{full_pilite_log_file});
+    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-status $job_id $result\n";
     close($fdlog);
-    print $result."\n";
+    print STDOUT $result."\n";

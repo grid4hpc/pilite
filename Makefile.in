@@ -2,8 +2,8 @@
 # piLite Makefile
 #
 
-INSTALLDIR    = /root/test
-HOMEDIR       = /root
+INSTALLDIR    = <installdir>
+HOMEDIR       = <homedir>
 
 ################################
 INSTALL       = /usr/bin/install
@@ -17,6 +17,7 @@ PILITEWORKDIR = .pilite
 PILITECONFDIR = conf
 
 PILITE_CLIENT_BIN = \
+	pilot-job-cancel \
 	pilot-job-cleanup \
         pilot-job-get-output \
         pilot-job-list \
@@ -31,7 +32,8 @@ PILITE_CLIENT_CONF = \
 
 PILITE_SERVER_BIN = \
 	check_file_exists.pl \
-        cleanup_dir.pl \
+        job_cancel.pl \
+        job_cleanup.pl \
         job_execute.pl \
         job_execute_wrapper.pl \
         job_prepare_dir.pl \
@@ -136,6 +138,12 @@ install-server-workdir:
 	@( if [ ! -d $(HOMEDIR)/$(PILITEWORKDIR) ] ; then \
 		mkdir $(HOMEDIR)/$(PILITEWORKDIR) ;\
 		echo "   mkdir $(HOMEDIR)/$(PILITEWORKDIR)" ;\
+	fi )
+	@echo "Done"
+	@echo "piLite server: preparing conf directory for logs: $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)"
+	@( if [ ! -d $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR) ] ; then \
+		mkdir $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR) ;\
+		echo "   mkdir $(HOMEDIR)/$(PILITEWORKDIR)/$(PILITECONFDIR)" ;\
 	fi )
 	@echo "Done"
 

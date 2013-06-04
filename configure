@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+
+my $clientdir = 'client';
+my $examplesdir = 'examples';
+my $make_file_in = 'Makefile.in';
+my $conf_file_in = 'pilite.conf.in';
+my $make_file_out = 'Makefile';
+my $conf_file_out = 'pilite.conf';
+
+    my @server_client_opts = ('installdir', 'homedir');
+    my @client_needed_opts = ('userkeyfile', 'remotehostname', 'remoteusername', 'remotescriptdir');
+    my @client_optional_opts = ('sshexec', 'scpexec');
+
+    my $in_opts;
+    $in_opts->{installdir}= "";
+    $in_opts->{homedir} = "";
+    $in_opts->{userkeyfile} = "";
+    $in_opts->{remotehostname} = "";
+    $in_opts->{remoteusername} = "";
+    $in_opts->{remotescriptdir} = "";
+    $in_opts->{sshexec} = "";
+    $in_opts->{scpexec} = "";
+    my $result = GetOptions (
+        "installdir=s" => \$in_opts->{installdir},
+        "homedir=s" => \$in_opts->{homedir},
+        "userkeyfile=s" => \$in_opts->{userkeyfile},
+        "remotehostname=s" => \$in_opts->{remotehostname},
+        "remoteusername=s" => \$in_opts->{remoteusername},
+        "remotescriptdir=s" => \$in_opts->{remotescriptdir},
+        "sshexec=s" => \$in_opts->{sshexec},
+        "scpexec=s" => \$in_opts->{scpexec});
+
+    if ((not length($in_opts->{installdir})) or (not length($in_opts->{homedir}))) {
+        print "ERROR: mandatory options installdir and homedir are not defined or empty!\n";
+        exit 1;
+    }
+
+    my $install_client = -1;
+    my $fdmake_in;
+    my $fdmake_out;
+    open($fdmake_in, "./$make_file_in") or die "ERROR: can not open $make_file_in file to configure: $!";
+    open($fdmake_out, ">", "./$make_file_out") or die "ERROR: can not open $make_file_out file for writing: $!";
+        foreach my $line (<$fdmake_in>) {
+            foreach my $key (@server_client_opts) {
+                $line =~ s{<$key>}{$in_opts->{$key}}xs;
+            }
+            print $fdmake_out $line;
+        }
+    close($fdmake_out);
+    close($fdmake_in);
+
+
+    my $needed_opts_count = 0; 
+    my $message = "";
+    foreach my $key (@client_needed_opts) {
+        if (not length($in_opts->{$key})) {
+            $message .= "ERROR: required option ".$key." is not defined or empty!\n";
+        } else {
+            $needed_opts_count++;
+        }
+    }
+    if ($needed_opts_count > 0) {
+        if (length($message) > 0) {
+            print "$message";
+            exit 1;
+        }
+    } else {
+        exit 0;
+    }
+
+    my $fdconf_in;
+    my $fdconf_out;
+    open($fdconf_in, "./$clientdir/$examplesdir/$conf_file_in") or die "ERROR: can not open $conf_file_in file to configure: $!";
+    open($fdconf_out, ">", "./$clientdir/$examplesdir/$conf_file_out") or die "ERROR: can not open $conf_file_out file for writing: $!";
+        foreach my $line (<$fdconf_in>) {
+            my $print_line = 1;
+            foreach my $key (@server_client_opts, @client_needed_opts) {
+                $line =~ s{<$key>}{$in_opts->{$key}}xs;
+            }
+            foreach my $key (@client_optional_opts) {
+                if (length($in_opts->{$key})) {
+                    $line =~ s{<$key>}{$in_opts->{$key}}xs;
+                } else {
+                    $print_line = 0 if ($line =~ /<$key>/);
+                }
+            }
+            print $fdconf_out $line if ($print_line);
+        }
+    close($fdconf_out);
+    close($fdconf_in);
+   
+    print "configure done!!!\n"; 

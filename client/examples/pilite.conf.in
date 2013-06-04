@@ -1,0 +1,9 @@
+### piLite config file
+
+LOCAL_HOME_DIR = <homedir>
+LOCAL_KEY_FILE = <userkeyfile>
+REMOTE_HOST_NAME = <remotehostname>
+REMOTE_USER_NAME = <remoteusername>
+REMOTE_SCRIPT_DIR = <remotescriptdir>
+SSH_EXEC = <sshexec>
+SCP_EXEC = <scpexec>

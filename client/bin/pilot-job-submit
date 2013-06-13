@@ -119,13 +119,15 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
                     my $input_file = $input_files->{$input_file_name};
                     if (-e $input_file) {
                         ### Upload the input file to the server
-                        if (not(copy($input_file, $local_full_job_dir.'/'.$input_file))) {
+                        my $input_copy_failed = `cp -rf $input_file $local_full_job_dir/$input_file`;
+                        #if (not(copy($input_file, $local_full_job_dir.'/'.$input_file))) {
+                        if ($input_copy_failed) {
                             open($fdlog, ">>", $results->{full_pilite_log_file});
-                            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of input file failed: $!";
+                            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of input file failed: $input_copy_failed\n";
                             close($fdlog);
                             exit 1;
                         }
-                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$input_file.' 2>&1 > /dev/null');
+                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$input_file.' 2>&1 > /dev/null');
                     } else {
                         open($fdlog, ">>", $results->{full_pilite_log_file});
                         print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Input file '".$input_file."' for task '".$task->{id}."' is not found\n";
@@ -146,11 +148,11 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
     ### Upload the job file to the server
     if (not(copy($job_name, $local_full_job_dir.'/'.$short_job_name))) {
         open($fdlog, ">>", $results->{full_pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of the job file failed: $!";
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Copy of the job file failed: $!\n";
         close($fdlog);
         exit 1;
     }
-    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$job_name.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$short_job_name.' 2>&1 > /dev/null');
+    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$job_name.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$short_job_name.' 2>&1 > /dev/null');
 
     ### Submit the job
     system($results->{ssh_exec}.' -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.' '.$main_remote_executable.' '.$job_id.' '.$pilite_user_name.' '.$short_job_name);

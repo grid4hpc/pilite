@@ -119,20 +119,20 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
                 foreach my $output_file_name (keys %{$output_files}) {
                     ### Download the output file from the server
                     my $output_file = $output_files->{$output_file_name};
-                    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$output_file.' '.$full_pilite_user_working_dir.'/'.$output_file.' 2>&1 > /dev/null');
+                    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$output_file.' '.$full_pilite_user_working_dir.'/'.$output_file.' 2>&1 > /dev/null');
                     print STDOUT "OUT file: ".$full_pilite_user_working_dir.'/'.$output_file."\n";
                 } # foreach output file
             }
             ### Download stdout file
             if ((exists $task_definition->{stdout}) and (defined $task_definition->{stdout}) and (length $task_definition->{stdout} > 0)) {
                 $stdout = $task_definition->{stdout};
-                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$stdout.' '.$full_pilite_user_working_dir.'/'.$stdout.' 2>&1 > /dev/null');
+                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$stdout.' '.$full_pilite_user_working_dir.'/'.$stdout.' 2>&1 > /dev/null');
                 print STDOUT "STDOUT file: ".$full_pilite_user_working_dir.'/'.$stdout."\n";
             }
             ### Download stderr file
             if ((exists $task_definition->{stderr}) and (defined $task_definition->{stderr}) and (length $task_definition->{stderr} > 0)) {
                 $stderr = $task_definition->{stderr};
-                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$stderr.' '.$full_pilite_user_working_dir.'/'.$stderr.' 2>&1 > /dev/null');
+                system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$stderr.' '.$full_pilite_user_working_dir.'/'.$stderr.' 2>&1 > /dev/null');
                 print STDOUT "STDERR file: ".$full_pilite_user_working_dir.'/'.$stderr."\n";
             }
         } else {

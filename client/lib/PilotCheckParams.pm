@@ -162,13 +162,6 @@ sub check_params {
 
     ### Local script dir checks
     if ((not defined $results{local_script_dir}) or (not length $results{local_script_dir}) or (not(-d $results{local_script_dir}))) {
-        foreach my $pilot_script (@pilot_scripts) {
-            if (not (-x './'.$pilot_script)) {
-                print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))."Global checks: ERROR: local script directory (env \$LOCAL_SCRIPT_DIR) is not defined, is empty or is not a directory!\n";
-                close($fdlog);
-                return \%results;
-            }
-        }
         $results{local_script_dir} = '.';
     }
 

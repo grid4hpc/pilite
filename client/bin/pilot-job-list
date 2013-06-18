@@ -3,6 +3,13 @@
 use strict;
 use warnings;
 use POSIX;
+use File::Spec;
+use File::Basename qw(dirname);
+
+my $current_dir;
+BEGIN { $current_dir = File::Spec->rel2abs(dirname(__FILE__)); }
+use lib $current_dir;
+
 use PilotCheckParams;
 
 my $fdlog;
@@ -10,6 +17,9 @@ my $pilite_user_name = PilotCheckParams::get_current_pilite_user(0, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
+if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq '.')) {
+    $results->{local_script_dir} = $current_dir;
+}
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {

@@ -4,16 +4,17 @@ use strict;
 use warnings;
 use POSIX;
 
+my $base_dir = $ENV{HOME};
 my $short_pilite_dir = ".piLite";
 my $short_pilite_conf_dir = "conf";
 my $short_pilite_log_filename = "pilite_server.log";
-my $pilite_log_filename = './'.$short_pilite_dir.'/'.$short_pilite_conf_dir.'/'.$short_pilite_log_filename;
+my $pilite_log_filename = $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir.'/'.$short_pilite_log_filename;
 
-if (not (-e './'.$short_pilite_dir)) {
-    mkdir './'.$short_pilite_dir;
+if (not (-e $base_dir.'/'.$short_pilite_dir)) {
+    mkdir $base_dir.'/'.$short_pilite_dir;
 }
-if (not (-e './'.$short_pilite_dir.'/'.$short_pilite_conf_dir)) {
-    mkdir './'.$short_pilite_dir.'/'.$short_pilite_conf_dir;
+if (not (-e $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir)) {
+    mkdir $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir;
 }
 
 my $fdlog;

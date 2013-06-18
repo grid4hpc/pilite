@@ -14,7 +14,7 @@ my $conf_file_out = 'pilite.conf';
 
     my @server_client_opts = ('installdir', 'homedir');
     my @client_needed_opts = ('userkeyfile', 'remotehostname', 'remoteusername', 'remotescriptdir');
-    my @client_optional_opts = ('sshexec', 'scpexec');
+    my @client_optional_opts = ('localscriptdir', 'sshexec', 'scpexec');
 
     my $in_opts;
     $in_opts->{installdir}= "";
@@ -23,6 +23,7 @@ my $conf_file_out = 'pilite.conf';
     $in_opts->{remotehostname} = "";
     $in_opts->{remoteusername} = "";
     $in_opts->{remotescriptdir} = "";
+    $in_opts->{localscriptdir} = "";
     $in_opts->{sshexec} = "";
     $in_opts->{scpexec} = "";
     my $result = GetOptions (
@@ -32,6 +33,7 @@ my $conf_file_out = 'pilite.conf';
         "remotehostname=s" => \$in_opts->{remotehostname},
         "remoteusername=s" => \$in_opts->{remoteusername},
         "remotescriptdir=s" => \$in_opts->{remotescriptdir},
+        "localscriptdir=s" => \$in_opts->{localscriptdir},
         "sshexec=s" => \$in_opts->{sshexec},
         "scpexec=s" => \$in_opts->{scpexec});
 
@@ -54,12 +56,13 @@ my $conf_file_out = 'pilite.conf';
     close($fdmake_out);
     close($fdmake_in);
 
+    print "configure of main required options done!!!\n"; 
 
     my $needed_opts_count = 0; 
     my $message = "";
     foreach my $key (@client_needed_opts) {
         if (not length($in_opts->{$key})) {
-            $message .= "ERROR: required option ".$key." is not defined or empty!\n";
+            $message .= "ERROR: client required option ".$key." is not defined or empty!\n";
         } else {
             $needed_opts_count++;
         }
@@ -94,4 +97,4 @@ my $conf_file_out = 'pilite.conf';
     close($fdconf_out);
     close($fdconf_in);
    
-    print "configure done!!!\n"; 
+    print "client configure done!!!\n"; 

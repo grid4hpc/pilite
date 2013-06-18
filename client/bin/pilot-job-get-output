@@ -4,6 +4,13 @@ use strict;
 use warnings;
 use POSIX;
 use JSON;
+use File::Spec;
+use File::Basename qw(dirname);
+
+my $current_dir;
+BEGIN { $current_dir = File::Spec->rel2abs(dirname(__FILE__)); }
+use lib $current_dir;
+
 use PilotCheckParams;
 
 my $fdlog;
@@ -11,6 +18,9 @@ my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
+if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq '.')) {
+    $results->{local_script_dir} = $current_dir;
+}
 
 ### Check if a job ID is passed
 my $job_id = $ARGV[0];
@@ -119,7 +129,7 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
                 foreach my $output_file_name (keys %{$output_files}) {
                     ### Download the output file from the server
                     my $output_file = $output_files->{$output_file_name};
-                    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$output_file.' '.$full_pilite_user_working_dir.'/'.$output_file.' 2>&1 > /dev/null');
+                    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$output_file_name.' '.$full_pilite_user_working_dir.'/'.$output_file.' 2>&1 > /dev/null');
                     print STDOUT "OUT file: ".$full_pilite_user_working_dir.'/'.$output_file."\n";
                 } # foreach output file
             }
@@ -147,5 +157,9 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
     open($fdlog, ">>", $results->{full_pilite_log_file});
     print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id\n";
     close($fdlog);
+
+    ### Cleanup the job temporary dir
+    #my $executable_cleanup = $results->{local_script_dir}.'/pilot-job-cleanup';
+    #my $job_cleanup_result=qx(${executable_cleanup} $job_id $pilite_user_name);
 
     exit 0;

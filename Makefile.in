@@ -13,16 +13,16 @@ CLIENTDIR     =client
 BINDIR        =bin
 LIBDIR        =lib
 EXAMPLESDIR   =examples
-PILITEWORKDIR = .pilite
+PILITEWORKDIR = .piLite
 PILITECONFDIR = conf
 
 PILITE_CLIENT_BIN = \
 	pilot-job-cancel \
 	pilot-job-cleanup \
-        pilot-job-get-output \
-        pilot-job-list \
-        pilot-job-status \
-        pilot-job-submit \
+	pilot-job-get-output \
+	pilot-job-list \
+	pilot-job-status \
+	pilot-job-submit \
 
 PILITE_CLIENT_LIB = \
 	PilotCheckParams.pm \
@@ -32,12 +32,12 @@ PILITE_CLIENT_CONF = \
 
 PILITE_SERVER_BIN = \
 	check_file_exists.pl \
-        job_cancel.pl \
-        job_cleanup.pl \
-        job_execute.pl \
-        job_execute_wrapper.pl \
-        job_prepare_dir.pl \
-        job_status.pl \
+	job_cancel.pl \
+	job_cleanup.pl \
+	job_execute.pl \
+	job_execute_wrapper.pl \
+	job_prepare_dir.pl \
+	job_status.pl \
 
 all: install-client
 

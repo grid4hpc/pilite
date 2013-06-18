@@ -6,6 +6,12 @@ use POSIX;
 use JSON;
 use File::Spec;
 use File::Copy;
+use File::Basename qw(dirname);
+
+my $current_dir;
+BEGIN { $current_dir = File::Spec->rel2abs(dirname(__FILE__)); }
+use lib $current_dir;
+
 use PilotCheckParams;
 
 my @chars = ("A" .. "Z", "a" .. "z", 0 .. 9);
@@ -18,6 +24,9 @@ my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
+if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq '.')) {
+    $results->{local_script_dir} = $current_dir;
+}
 
 ### Check if a job definition file is passed
 my $job_name = $ARGV[0];
@@ -127,7 +136,7 @@ my ($job_volume, $job_directories, $short_job_name) = File::Spec->splitpath($job
                             close($fdlog);
                             exit 1;
                         }
-                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$input_file.' 2>&1 > /dev/null');
+                        system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$local_full_job_dir.'/'.$input_file.' '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$input_file_name.' 2>&1 > /dev/null');
                     } else {
                         open($fdlog, ">>", $results->{full_pilite_log_file});
                         print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-submit $job_name: ERROR: Input file '".$input_file."' for task '".$task->{id}."' is not found\n";

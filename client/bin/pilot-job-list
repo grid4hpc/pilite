@@ -45,9 +45,11 @@ my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
     my @all_jobs = split /\s/, $jobs_list;
     my $pilite_jobs = '';
     foreach my $job (@all_jobs) {
-        if (($job ne '.') and ($job ne '..') and ($job ne './'.$results->{short_pilite_user_working_dir})) {
+        if (($job ne '.') and ($job ne '..')) {
             $job =~ s{\A \.\/ (.+)\z}{$1}xms;
-            $pilite_jobs .= $job."\n";
+            if ($job =~ m{\A [a-zA-Z0-9]{8} \z}xs) {
+                $pilite_jobs .= $job."\n";
+            }
         }
     }
     if (not length $pilite_jobs) {

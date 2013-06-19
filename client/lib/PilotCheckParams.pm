@@ -8,7 +8,6 @@ my $short_pilite_dir = '.piLite';
 my $short_pilite_conf_dir = 'conf';
 my $short_pilite_log_filename = 'pilite.log';
 my $short_pilite_conf_filename = 'pilite.conf';
-my $short_pilite_user_working_dir = 'workdir';
 
 sub get_current_pilite_user {
     my $required_params_count = shift;
@@ -17,6 +16,16 @@ sub get_current_pilite_user {
         return $args->[$required_params_count];
     } else {
         return $ENV{USER};
+    }
+}
+
+sub get_current_full_pilite_user_working_dir {
+    my $required_params_count = shift;
+    my $args = shift;
+    if ($#{$args} > $required_params_count-1) {
+        return $args->[$required_params_count];
+    } else {
+        return $ENV{HOME};
     }
 }
 
@@ -158,7 +167,6 @@ sub check_params {
     $results{short_pilite_dir} = $short_pilite_dir;
     $results{short_pilite_conf_dir} = $short_pilite_conf_dir;
     $results{full_pilite_log_file} = $full_pilite_log_filename;
-    $results{short_pilite_user_working_dir} = $short_pilite_user_working_dir;
 
     my $fdlog;
     if (not( open($fdlog, ">>", $results{pilite_log_file}) )) {

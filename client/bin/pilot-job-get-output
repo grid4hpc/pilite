@@ -14,7 +14,7 @@ use lib $current_dir;
 use PilotCheckParams;
 
 my $fdlog;
-my $pilite_user_name = PilotCheckParams::get_current_pilite_user(1, \@ARGV);
+my $pilite_user_name = PilotCheckParams::get_current_pilite_user(2, \@ARGV);
 
 ### Get parameters that are needed for work
 my $results = PilotCheckParams::check_params();
@@ -27,7 +27,7 @@ my $job_id = $ARGV[0];
 if ((not defined $job_id) or (not length $job_id)) {
     if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
         print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output: ERROR:\n";
-        print $fdlog "  Usage: pilot-job-get-output ID ...\n\n";
+        print $fdlog "  Usage: pilot-job-get-output ID ...\n";
         print $fdlog "  Download output files, STDOUT and STDERR of the finished job by ID.\n";
         close($fdlog);
     }
@@ -128,11 +128,11 @@ if ($job_status ne 'Finished') {
     } 
 
     ### Prepare the user working dir to download the files to
-    my $full_pilite_user_working_dir = $local_pilite_user_dir.'/'.$results->{short_pilite_user_working_dir};
-    if (not (-e $full_pilite_user_working_dir)) {
-        mkdir $full_pilite_user_working_dir;
+    my $full_pilite_user_working_dir = File::Spec->rel2abs(PilotCheckParams::get_current_full_pilite_user_working_dir(1, \@ARGV).'/'.$job_id);
+    if ((defined $full_pilite_user_working_dir) and (not (-e $full_pilite_user_working_dir))) {
+        `mkdir -p $full_pilite_user_working_dir`;
     }
-    if (not( (-e $full_pilite_user_working_dir) and (-d _) and (-w _) )) {
+    if (not( (defined $full_pilite_user_working_dir) and (-e $full_pilite_user_working_dir) and (-d _) and (-w _) )) {
         if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
             print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: user working dir $full_pilite_user_working_dir does not exist or is not writable by the effective user\n";
             close($fdlog);
@@ -140,7 +140,6 @@ if ($job_status ne 'Finished') {
         print STDOUT "No output\n";
         exit 1;
     }
-
 
     ### Set default STDERR and STDOUT names
     my $stderr = 'stderr.log';

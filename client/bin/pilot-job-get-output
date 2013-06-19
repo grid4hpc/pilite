@@ -25,20 +25,22 @@ if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq 
 ### Check if a job ID is passed
 my $job_id = $ARGV[0];
 if ((not defined $job_id) or (not length $job_id)) {
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output: ERROR:\n";
-    print $fdlog "  Usage: pilot-job-get-output ID ...\n\n";
-    print $fdlog "  Download output files, STDOUT and STDERR of the finished job by ID.\n";
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output: ERROR:\n";
+        print $fdlog "  Usage: pilot-job-get-output ID ...\n\n";
+        print $fdlog "  Download output files, STDOUT and STDERR of the finished job by ID.\n";
+        close($fdlog);
+    }
     print STDOUT "No output\n";
     exit 1;
 }
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Global params are not set\n";
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Global params are not set\n";
+        close($fdlog);
+    }
     print STDOUT "No output\n";
     exit 1;
 }
@@ -51,41 +53,54 @@ my $remote_executable_check = $results->{remote_script_dir}.'/check_file_exists.
 my $job_status=qx(${executable_status} $job_id $pilite_user_name);
 chomp($job_status);
 if ($job_status ne 'Finished') {
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: WARNING: Job is not in the FINISHED state.\n";
-    print $fdlog "  The current state is: $job_status\n";
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: WARNING: Job is not in the FINISHED state.\n";
+        print $fdlog "  The current state is: $job_status\n";
+        close($fdlog);
+    }
     print STDOUT "No output\n";
     exit 1;
 }
 
 ### Get the corresponding job definition file
-my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
-my $short_job_name = PilotCheckParams::get_job_name_by_id($local_pilite_user_dir, $job_id, $results->{full_pilite_log_file});
-if ((not defined $short_job_name) or (not length $short_job_name)) {
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Local job is not found\n";
-    close($fdlog);
-    print STDOUT "No output\n";
-    exit 1;
-}
+    my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+    if (not( (-e $local_pilite_user_dir) and (-d _) and (-w _) )) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: user dir $local_pilite_user_dir does not exist or is not writable by the effective user\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
 
-######################################################################################################
+    my $short_job_name = PilotCheckParams::get_job_name_by_id($local_pilite_user_dir, $job_id, $results->{full_pilite_log_file});
+    if ((not defined $short_job_name) or (not length $short_job_name)) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Local job is not found\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
 
     my $local_full_job_dir = $local_pilite_user_dir.'/'.$job_id;
-    my $job_name = $local_full_job_dir.'/'.$short_job_name;
-    my $server_job_dir = './'.$results->{short_pilite_dir}.'/'.$pilite_user_name.'/'.$job_id;
-
-    ### Set default STDERR and STDOUT names
-    my $stderr = 'stderr.log';
-    my $stdout = 'stdout.log';
+    if (not( (-e $local_full_job_dir) and (-d _) and (-w _) )) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: job dir $local_full_job_dir does not exist or is not writable by the effective user\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
 
     ### Read the job definition
+    my $job_name = $local_full_job_dir.'/'.$short_job_name;
     my $fd;
     if (not(open($fd, $job_name))) {
-        open($fdlog, ">>", $results->{full_pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Can not open job definition file: ".$job_name."\n"; 
-        close($fdlog);
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Can not open job definition file: ".$job_name."\n"; 
+            close($fdlog);
+        }
         print STDOUT "No output\n";
         exit 1;
     }
@@ -104,9 +119,10 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
         @tasks = @{$job_def->{tasks}};
     }
     if (length(@tasks) == 0) {
-        open($fdlog, ">>", $results->{full_pilite_log_file});
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: No tasks defined!\n";
-        close($fdlog);
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: No tasks defined!\n";
+            close($fdlog);
+        }
         print STDOUT "No output\n";
         exit 1;
     } 
@@ -116,6 +132,22 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
     if (not (-e $full_pilite_user_working_dir)) {
         mkdir $full_pilite_user_working_dir;
     }
+    if (not( (-e $full_pilite_user_working_dir) and (-d _) and (-w _) )) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: user working dir $full_pilite_user_working_dir does not exist or is not writable by the effective user\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
+
+
+    ### Set default STDERR and STDOUT names
+    my $stderr = 'stderr.log';
+    my $stdout = 'stdout.log';
+
+    ### Define server job dir for SCP
+    my $server_job_dir = './'.$results->{short_pilite_dir}.'/'.$pilite_user_name.'/'.$job_id;
 
     ### Iterate through the tasks and select the first one
     foreach my $task (@tasks) {
@@ -130,7 +162,7 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
                     ### Download the output file from the server
                     my $output_file = $output_files->{$output_file_name};
                     system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$output_file_name.' '.$full_pilite_user_working_dir.'/'.$output_file.' 2>&1 > /dev/null');
-                    print STDOUT "OUT file: ".$full_pilite_user_working_dir.'/'.$output_file."\n";
+                    print STDOUT "OUT file (dir): ".$full_pilite_user_working_dir.'/'.$output_file."\n";
                 } # foreach output file
             }
             ### Download stdout file
@@ -146,17 +178,19 @@ if ((not defined $short_job_name) or (not length $short_job_name)) {
                 print STDOUT "STDERR file: ".$full_pilite_user_working_dir.'/'.$stderr."\n";
             }
         } else {
-            open($fdlog, ">>", $results->{full_pilite_log_file});
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Invalid definition for task: ".$task->{id}.". No definition!\n";
-            close($fdlog);
+            if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+                print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id: ERROR: Invalid definition for task: ".$task->{id}.". No definition!\n";
+                close($fdlog);
+            }
             print STDOUT "No output\n";
             exit 1;
         }
         last;
     }
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id\n";
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-output $job_id\n";
+        close($fdlog);
+    }
 
     ### Cleanup the job temporary dir
     #my $executable_cleanup = $results->{local_script_dir}.'/pilot-job-cleanup';

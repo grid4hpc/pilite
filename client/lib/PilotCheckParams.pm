@@ -38,20 +38,24 @@ sub check_job_file {
     ### Check if a job definition is defined
     if ((not defined $job_file_name) or (not length $job_file_name)) {
         my $fdlog;
-        open($fdlog, ">>", $full_pilite_log_filename);
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: ERROR:\n";
-        print $fdlog "usage: pilot-job-submit job_definition.js ...\n\n";
-        print $fdlog " Submit a job to Pilot service.\n";
-        close($fdlog);
+        if (open($fdlog, ">>", $full_pilite_log_filename)) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: ERROR:\n";
+            print $fdlog "usage: pilot-job-submit job_definition.js ...\n\n";
+            print $fdlog " Submit a job to Pilot service.\n";
+            close($fdlog);
+        }
+        print STDOUT "NO JOB FILE\n";
         return 0;
     }
 
     ### Check if a job definition file exists
     if (not(-e $job_file_name)) {
         my $fdlog;
-        open($fdlog, ">>", $full_pilite_log_filename);
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: ERROR: job definition file not found: '".$job_file_name."'\n";
-        close($fdlog);
+        if (open($fdlog, ">>", $full_pilite_log_filename)) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." pilot-job-submit: ERROR: job definition file not found: '".$job_file_name."'\n";
+            close($fdlog);
+        }
+        print STDOUT "NO JOB FILE\n";
         return 0;
     }
     return 1;
@@ -66,22 +70,24 @@ sub get_job_name_by_id {
     my $fd;
     if (not(open($fd, $local_job_description))) {
         my $fdlog;
-        open($fdlog, ">>", $full_pilite_log_filename);
-        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: Can not open file: ".$local_job_description."\n";
-        close($fdlog);
+        if (open($fdlog, ">>", $full_pilite_log_filename)) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: Can not open file: ".$local_job_description."\n";
+            close($fdlog);
+        }
         return "";
     }
     my $short_job_name = <$fd>;
     close($fd);
     if ((not defined $short_job_name) or (not length $short_job_name) or (not (-e $local_full_job_dir.'/'.$short_job_name))) {
         my $fdlog;
-        open($fdlog, ">>", $full_pilite_log_filename);
-        if ((not defined $short_job_name) or (not length $short_job_name)) {
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: job file for the job with ID=".$job_id." is not defined\n";
-        } else {
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: job file for the job with ID=".$job_id." does not exist\n";
+        if (open($fdlog, ">>", $full_pilite_log_filename)) {
+            if ((not defined $short_job_name) or (not length $short_job_name)) {
+                print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: job file for the job with ID=".$job_id." is not defined\n";
+            } else {
+                print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." Global checks: ERROR: job file for the job with ID=".$job_id." does not exist\n";
+            }
+            close($fdlog);
         }
-        close($fdlog);
         return "";
     } else {
         return $short_job_name;
@@ -94,14 +100,39 @@ sub check_params {
                    ssh_exec => '', scp_exec => '');
 
     my @pilot_scripts = ('pilot-job-submit', 'pilot-job-status', 'pilot-job-get-output', 'pilot-job-cleanup');
-    my $user_home_dir = $ENV{HOME};
-    my $full_pilite_conf_dir = $user_home_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir;
+    $results{local_home_dir} = $ENV{HOME};
+    my $local_home_dir_env_name = uc('local_home_dir');
+    if ((exists $ENV{$local_home_dir_env_name}) and (defined $ENV{$local_home_dir_env_name}) and (length $ENV{$local_home_dir_env_name})) {
+        $results{local_home_dir} = $ENV{$local_home_dir_env_name};
+    }
+
+    my $full_pilite_dir = $results{local_home_dir}.'/'.$short_pilite_dir;
+    my $full_pilite_conf_dir = $full_pilite_dir.'/'.$short_pilite_conf_dir;
     my $full_pilite_conf_filename = $full_pilite_conf_dir.'/'.$short_pilite_conf_filename;
     my $full_pilite_log_filename = $full_pilite_conf_dir.'/'.$short_pilite_log_filename;
 
-    if ((defined $user_home_dir) and (length $user_home_dir) and 
-        (-e $user_home_dir) and (-e $user_home_dir.'/'.$short_pilite_dir) and (-e $user_home_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir) and
-        (-e $full_pilite_conf_filename)) {
+    if (not( (defined $results{local_home_dir}) and (length $results{local_home_dir}) and (-e $results{local_home_dir}) )){
+        print STDOUT "NO LOCAL HOME DIR\n";
+        return \%results;
+    }
+    ### Check if the main piLite directory exists
+    if (not(-e $full_pilite_dir)) {
+        mkdir $full_pilite_dir;
+    }
+    if (not( (-e $full_pilite_dir) and (-d _) and (-w _) )) {
+        print STDOUT "NO PILITE DIR\n";
+        return \%results;
+    }
+    ### Check if the piLite conf directory exists
+    if (not(-e $full_pilite_conf_dir)) {
+        mkdir $full_pilite_conf_dir;
+    }
+    if (not( (-e $full_pilite_conf_dir) and (-d _) and (-w _) )) {
+        print STDOUT "NO CONF DIR\n";
+        return \%results;
+    }
+
+    if ((-e $full_pilite_conf_filename) && (-f _) && (-r _)) {
         my $fd;
         if (open($fd, $full_pilite_conf_filename)) {
             while (my $line=<$fd>) {
@@ -109,12 +140,12 @@ sub check_params {
                 my $lc_key = TrimAndLC($key);
                 if ((exists $results{$lc_key}) and (defined $value) and (length $value) and ($value !~ m{\A \s+ \z}xms)) {
                     $results{$lc_key} = TrimOnly($value);
-                    #print "key = $lc_key, value = ".$results{$lc_key}."\n";
-                }
-            }
+                #print "key = $lc_key, value = ".$results{$lc_key}."\n";
+                } # if key exists
+            } # while
             close($fd);
-        }
-    }
+        } # if open conf
+    } # if conf exists
 
     foreach my $result_key (keys %results) {
         my $env_name = uc($result_key);
@@ -123,20 +154,17 @@ sub check_params {
         } 
     }
 
-    $results{user_home_dir} = $user_home_dir;
-    $results{full_pilite_dir} = $user_home_dir.'/'.$short_pilite_dir;
+    $results{full_pilite_dir} = $full_pilite_dir;
     $results{short_pilite_dir} = $short_pilite_dir;
     $results{short_pilite_conf_dir} = $short_pilite_conf_dir;
     $results{full_pilite_log_file} = $full_pilite_log_filename;
     $results{short_pilite_user_working_dir} = $short_pilite_user_working_dir;
 
-    ### Check if the piLite conf directory exists
-    if (not (-e $full_pilite_conf_dir)) {
-        mkdir $full_pilite_conf_dir;
-    }
-
     my $fdlog;
-    open($fdlog, ">>", $results{pilite_log_file});
+    if (not( open($fdlog, ">>", $results{pilite_log_file}) )) {
+        print STDOUT "FAILED TO OPEN LOG\n";
+        return \%results;
+    }
 
     ### Local home dir checks
     if ((not defined $results{local_home_dir}) or (not length $results{local_home_dir})) {

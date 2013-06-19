@@ -23,25 +23,39 @@ if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq 
 
 ### Return if needed params are not set
 if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-list: ERROR: Global params are not set\n";
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-list: ERROR: Global params are not set\n";
+        close($fdlog);
+    }
+    print "NONE\n";
     exit 1;
 }
 
+### Define piLite user directory
+my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+
+### Check if the piLite user directory exists
+    if (not( (-e $local_pilite_user_dir) and (-d _) and (-w _) )) {
+        print "NONE\n";
+        exit 1;
+    }
+
 ### Get the jobs list
-    my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
-    my $jobs_list = qx(cd $local_pilite_user_dir && ls -d *);
+    my $jobs_list = qx(cd $local_pilite_user_dir && find . -maxdepth 1 -type d);
     my @all_jobs = split /\s/, $jobs_list;
     my $pilite_jobs = '';
     foreach my $job (@all_jobs) {
-        if (($job ne '.') and ($job ne '..') and ($job ne $results->{short_pilite_user_working_dir})) {
-            $job =~ s{\A \.(.+)\z}{$1}xms;
+        if (($job ne '.') and ($job ne '..') and ($job ne './'.$results->{short_pilite_user_working_dir})) {
+            $job =~ s{\A \.\/ (.+)\z}{$1}xms;
             $pilite_jobs .= $job."\n";
         }
     }
+    if (not length $pilite_jobs) {
+        $pilite_jobs = "NONE\n";
+    }
     print $pilite_jobs;
 
-    open($fdlog, ">>", $results->{full_pilite_log_file});
-    print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-list:\n$pilite_jobs"; 
-    close($fdlog);
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-list:\n$pilite_jobs"; 
+        close($fdlog);
+    }

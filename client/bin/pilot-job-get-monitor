@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use POSIX;
+use JSON;
+use File::Spec;
+use File::Basename qw(dirname);
+
+my $current_dir;
+BEGIN { $current_dir = File::Spec->rel2abs(dirname(__FILE__)); }
+use lib $current_dir;
+
+use PilotCheckParams;
+
+my $fdlog;
+my $pilite_user_name = PilotCheckParams::get_current_pilite_user(3, \@ARGV);
+
+### Get parameters that are needed for work
+my $results = PilotCheckParams::check_params();
+if ((defined $results->{local_script_dir}) and ($results->{local_script_dir} eq '.')) {
+    $results->{local_script_dir} = $current_dir;
+}
+
+### Check if a job ID is passed
+my $job_id = $ARGV[0];
+if ((not defined $job_id) or (not length $job_id)) {
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor: ERROR:\n";
+        print $fdlog "  Usage: pilot-job-get-monitor JOB_ID MONITOR_FILE_NAME [WORKING_DIR [PILITE_USER_NAME]] ...\n";
+        print $fdlog "  The JOB_ID is not defined.\n"; 
+        print $fdlog "  The default value for the WORKING_DIR is \$HOME.\n"; 
+        print $fdlog "  The default value for the PILITE_USER_NAME is \$USER.\n";
+        close($fdlog);
+    }
+    print STDOUT "No output\n";
+    exit 1;
+}
+
+### Check if a monitor file name is passed
+my $monitor_file_name = $ARGV[1];
+if ((not defined $monitor_file_name) or (not length $monitor_file_name)) {
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor: ERROR:\n";
+        print $fdlog "  Usage: pilot-job-get-monitor ID MONITOR_FILE_NAME [WORKING_DIR [PILITE_USER_NAME]] ...\n";
+        print $fdlog "  The MONITOR_FILE_NAME is not defined.\n"; 
+        print $fdlog "  The default value for the WORKING_DIR is \$HOME.\n"; 
+        print $fdlog "  The default value for the PILITE_USER_NAME is \$USER.\n";
+        close($fdlog);
+    }
+    print STDOUT "No output\n";
+    exit 1;
+}
+
+### Return if needed params are not set
+if ((not exists $results->{success}) or (not defined $results->{success}) or ($results->{success} != 1)) {
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor $job_id: ERROR: Global params are not set\n";
+        close($fdlog);
+    }
+    print STDOUT "No output\n";
+    exit 1;
+}
+
+    ### Check if the supplied job id is known to the system
+    my $local_pilite_user_dir = $results->{full_pilite_dir}.'/'.$pilite_user_name;
+    my $local_full_job_dir = $local_pilite_user_dir.'/'.$job_id;
+    if (not( (-e $local_full_job_dir) and (-d _) and (-w _) )) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor $job_id: ERROR: job dir $local_full_job_dir does not exist or is not writable by the effective user\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
+
+    ### Prepare the user working dir to download the files to
+    my $full_pilite_user_working_dir = File::Spec->rel2abs(PilotCheckParams::get_current_full_pilite_user_working_dir(2, \@ARGV).'/'.$job_id);
+    if ((defined $full_pilite_user_working_dir) and (not (-e $full_pilite_user_working_dir))) {
+        `mkdir -p $full_pilite_user_working_dir`;
+    }
+    if (not( (defined $full_pilite_user_working_dir) and (-e $full_pilite_user_working_dir) and (-d _) and (-w _) )) {
+        if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor $job_id: ERROR: user working dir $full_pilite_user_working_dir does not exist or is not writable by the effective user\n";
+            close($fdlog);
+        }
+        print STDOUT "No output\n";
+        exit 1;
+    }
+
+    ### Define server job dir for SCP
+    my $server_job_dir = './'.$results->{short_pilite_dir}.'/'.$pilite_user_name.'/'.$job_id;
+
+    ### Download the monitor file
+    system($results->{scp_exec}.' -B -i '.$results->{path_to_key_file}.' -r '.$results->{remote_user_name}.'@'.$results->{remote_host_name}.':'.$server_job_dir.'/'.$monitor_file_name.' '.$full_pilite_user_working_dir.'/'.$monitor_file_name.' 2>&1 > /dev/null');
+    print STDOUT "MONITOR file: ".$full_pilite_user_working_dir.'/'.$monitor_file_name."\n";
+
+
+    if (open($fdlog, ">>", $results->{full_pilite_log_file})) {
+        print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: pilot-job-get-monitor $job_id\n";
+        close($fdlog);
+    }
+
+    exit 0;

@@ -23,6 +23,7 @@ PILITE_CLIENT_BIN = \
 	pilot-job-list \
 	pilot-job-status \
 	pilot-job-submit \
+	pilot-job-get-monitor \
 
 PILITE_CLIENT_LIB = \
 	PilotCheckParams.pm \

@@ -32,11 +32,9 @@ PILITE_CLIENT_CONF = \
 	pilite.conf \
 
 PILITE_SERVER_BIN = \
-	check_file_exists.pl \
 	job_cancel.pl \
 	job_cleanup.pl \
 	job_execute.pl \
-	job_execute_wrapper.pl \
 	job_prepare_dir.pl \
 	job_status.pl \
 

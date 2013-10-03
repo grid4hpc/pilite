@@ -1,0 +1,4 @@
+#! /bin/sh
+
+[% executable %] [% arguments.join(' ') %] [%IF stdin.defined %] < [% stdin %] [% END %] [%IF stdout.defined %] > [% stdout %] [% END %] &
+echo $!

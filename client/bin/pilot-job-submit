@@ -15,7 +15,7 @@ use lib $current_script_dir;
 use PilotCheckParams;
 
 my @chars = ("A" .. "Z", "a" .. "z", 0 .. 9);
-my $main_remote_script_name = 'job_execute_wrapper.pl';
+my $main_remote_script_name = 'job_execute.pl';
 my $prepare_dir_remote_script_name = 'job_prepare_dir.pl';
 
 my $fdlog;

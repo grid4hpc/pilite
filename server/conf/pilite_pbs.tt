@@ -1,0 +1,23 @@
+#! /bin/sh
+# PBS batch job script built by PiLite
+
+#PBS -S /bin/sh
+[% IF stdout.defined %]
+#PBS -o [% stdout %]
+[% END %]
+[% IF stderr.defined %]
+#PBS -e [% stderr %]
+[% END %]
+[% IF queue.defined %]
+#PBS -q [% queue %]
+[% END %]
+#PBS -l nodes=[% count %]
+
+#Change to directory requested by user
+cd [% directory %]
+
+[% IF count > 1 %]
+mpirun -np [% count %] [% executable %] [% arguments.join(' ') %] [%IF stdin.defined %] < [% stdin %] [% END %]
+[% ELSE %]
+[% executable %] [% arguments.join(' ') %] [%IF stdin.defined %] < [% stdin %] [% END %]
+[% END %]

@@ -47,7 +47,6 @@ if ((not exists $results->{success}) or (not defined $results->{success}) or ($r
 
 ### Set some more params
 my $executable_status = $results->{local_script_dir}.'/pilot-job-status';
-my $remote_executable_check = $results->{remote_script_dir}.'/check_file_exists.pl';
 
 ### Get the job execution status
 my $job_status=qx(${executable_status} $job_id $pilite_user_name);

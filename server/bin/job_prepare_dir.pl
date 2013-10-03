@@ -2,37 +2,29 @@
 
 use strict;
 use warnings;
-use POSIX;
+use File::Basename;
+use Cwd qw(abs_path);
+use lib dirname(abs_path(__FILE__));
+use Config::Simple;
+use Module::Load;
+use Log::Log4perl;
 
-my $base_dir = $ENV{HOME};
-my $short_pilite_dir = ".piLite";
-my $short_pilite_conf_dir = "conf";
-my $short_pilite_log_filename = "pilite_server.log";
-my $pilite_log_filename = $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir.'/'.$short_pilite_log_filename;
+my $cfg_file = '/home/ngrid/.piLite/conf/pilite.conf';
 
-if (not (-e $base_dir.'/'.$short_pilite_dir)) {
-    mkdir $base_dir.'/'.$short_pilite_dir;
+my $cfg = new Config::Simple($cfg_file);
+my $batch_system = $cfg->param('SERVER.BATCH_SYSTEM');
+my $logger_cfg = $cfg->param('SERVER.PILITE_LOGGER_CONFIG');
+my $module="PiLite::Server::$batch_system";
+
+load $module;
+Log::Log4perl::init($logger_cfg);
+
+my $job_id = $ARGV[0];
+my $pilite_user_name = $ARGV[1];
+
+my $psc;
+eval { $psc = $module->new(job_id => $job_id, user_name => $pilite_user_name, config => $cfg, create_dirs => 1); };
+
+if ($@) {
+    exit 1;
 }
-if (not (-e $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir)) {
-    mkdir $base_dir.'/'.$short_pilite_dir.'/'.$short_pilite_conf_dir;
-}
-
-my $fdlog;
-
-    my $job_id = $ARGV[0];
-    my $pilite_user_name = $ARGV[1];
-
-    if ((defined $pilite_user_name) and (length $pilite_user_name) and (not (-e $base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name))) {
-        if (not(mkdir $base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name)) {
-            open($fdlog, ">>", $pilite_log_filename);
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: job_prepare_dir $job_id ERROR: Failed to create dir ".$base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name." \n";
-            close($fdlog);
-        }
-    }
-    if ((defined $job_id) and (length $job_id) and (not (-e $base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name.'/'.$job_id))) {
-        if (not (mkdir $base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name.'/'.$job_id)) {
-            open($fdlog, ">>", $pilite_log_filename);
-            print $fdlog strftime("%Y-%m-%d %H:%M:%S", localtime(time))." $pilite_user_name: job_prepare_dir $job_id ERROR: Failed to create dir ".$base_dir.'/'.$short_pilite_dir.'/'.$pilite_user_name.'/'.$job_id." \n";
-            close($fdlog);
-        }
-    }

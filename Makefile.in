@@ -40,6 +40,12 @@ PILITE_SERVER_BIN = \
 
 all: install-client
 
+check-installdir:
+	@( if [ ! -d $(INSTALLDIR) ] ; then \
+		mkdir $(INSTALLDIR) ;\
+		echo "   mkdir $(INSTALLDIR)" ;\
+	fi )
+
 install-client-bin:
 	@echo "piLite client: installing binary files to directory: $(INSTALLDIR)/"
 	@( for file in $(PILITE_CLIENT_BIN) ; do \
@@ -76,7 +82,7 @@ install-client-conf:
 	done )
 	@echo "Done"
 
-install-client: install-client-bin install-client-lib install-client-conf
+install-client: check-installdir install-client-bin install-client-lib install-client-conf
 
 install: install-client
 
